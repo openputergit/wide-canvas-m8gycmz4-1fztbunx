@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DevCollab - Collaborative Development Platform</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        .dark-mode {
+            background-color: #1a1a1a;
+            color: #ffffff;
+        }
+        .editor {
+            height: 300px;
+            font-family: 'Courier New', monospace;
+        }
+        .chat-container {
+            height: calc(100vh - 200px);
+        }
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+        .dark ::-webkit-scrollbar-track {
+            background: #2d2d2d;
+        }
+        .dark ::-webkit-scrollbar-thumb {
+            background: #666;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 transition-colors duration-200" id="app">
+    <!-- Navigation -->
+    <nav class="bg-blue-600 text-white p-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <div class="flex items-center space-x-4">
+                <h1 class="text-2xl font-bold">DevCollab</h1>
+                <div class="hidden md:flex space-x-4">
+                    <a href="#" class="hover:text-blue-200">Projects</a>
+                    <a href="#" class="hover:text-blue-200">Teams</a>
+                    <a href="#" class="hover:text-blue-200">Community</a>
+                </div>
+            </div>
+            <div class="flex items-center space-x-4">
+                <button @click="toggleTheme" class="p-2 rounded-full hover:bg-blue-700">
+                    <i :class="isDark ? 'bi bi-sun' : 'bi bi-moon'"></i>
+                </button>
+                <div class="relative">
+                    <img src="https://source.unsplash.com/100x100/?avatar" class="w-8 h-8 rounded-full cursor-pointer">
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container mx-auto p-4">
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+            <!-- Sidebar -->
+            <div class="md:col-span-3 bg-white dark:bg-gray-800 rounded-lg p-4 shadow">
+                <h2 class="text-xl font-bold mb-4">Projects</h2>
+                <ul class="space-y-2">
+                    <li v-for="project in projects" :key="project.id" 
+                        @click="selectProject(project)"
+                        class="cursor-pointer p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700">
+                        <i class="bi bi-folder mr-2"></i>
+                        {{ project.name }}
+                    </li>
+                </ul>
+                <button @click="showNewProjectModal = true" 
+                        class="mt-4 w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700">
+                    New Project
+                </button>
+            </div>
+
+            <!-- Main Content Area -->
+            <div class="md:col-span-6 space-y-4">
+                <!-- Code Editor -->
+                <div class="bg-white dark:bg-gray-800 rounded-lg p-4 shadow">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-bold">Code Editor</h2>
+                        <div class="space-x-2">
+                            <button @click="saveCode" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
+                                <i class="bi bi-save mr-2"></i>Save
+                            </button>
+                            <button @click="startVideoCall" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                                <i class="bi bi-camera-video mr-2"></i>Video Call
+                            </button>
+                        </div>
+                    </div>
+                    <textarea v-model="codeContent" 
+                              class="editor w-full p-4 bg-gray-50 dark:bg-gray-900 rounded border focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </textarea>
+                </div>
+
+                <!-- Chat Section -->
+                <div class="bg-white dark:bg-gray-800 rounded-lg p-4 shadow">
+                    <h2 class="text-xl font-bold mb-4">Project Chat</h2>
+                    <div class="chat-messages overflow-y-auto h-64 mb-4 p-2">
+                        <div v-for="msg in messages" :key="msg.id" 
+                             class="mb-2 p-2 rounded" 
+                             :class="msg.sender === 'me' ? 'bg-blue-100 dark:bg-blue-900 ml-auto' : 'bg-gray-100 dark:bg-gray-700'">
+                            <p class="font-bold">{{ msg.sender }}</p>
+                            <p>{{ msg.content }}</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <input v-model="newMessage" 
+                               @keyup.enter="sendMessage"
+                               class="flex-1 p-2 border rounded dark:bg-gray-700" 
+                               placeholder="Type a message...">
+                        <button @click="sendMessage" 
+                                class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                            Send
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Sidebar -->
+            <div class="md:col-span-3 bg-white dark:bg-gray-800 rounded-lg p-4 shadow">
+                <h2 class="text-xl font-bold mb-4">Team Members</h2>
+                <div class="space-y-3">
+                    <div v-for="member in teamMembers" :key="member.id" 
+                         class="flex items-center space-x-2 p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
+                        <img :src="member.avatar" class="w-8 h-8 rounded-full">
+                        <span>{{ member.name }}</span>
+                        <span class="ml-auto" :class="member.online ? 'text-green-500' : 'text-gray-400'">
+                            <i class="bi bi-circle-fill text-xs"></i>
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Project Modal -->
+    <div v-if="showNewProjectModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg w-96">
+            <h2 class="text-xl font-bold mb-4">Create New Project</h2>
+            <input v-model="newProjectName" 
+                   class="w-full p-2 border rounded mb-4 dark:bg-gray-700" 
+                   placeholder="Project Name">
+            <div class="flex justify-end space-x-2">
+                <button @click="showNewProjectModal = false" 
+                        class="px-4 py-2 border rounded hover:bg-gray-100 dark:hover:bg-gray-700">
+                    Cancel
+                </button>
+                <button @click="createProject" 
+                        class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                    Create
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp } = Vue
+
+        createApp({
+            data() {
+                return {
+                    isDark: false,
+                    showNewProjectModal: false,
+                    newProjectName: '',
+                    codeContent: '// Start coding here...',
+                    newMessage: '',
+                    projects: [
+                        { id: 1, name: 'Frontend App' },
+                        { id: 2, name: 'Backend API' },
+                        { id: 3, name: 'Mobile App' }
+                    ],
+                    messages: [
+                        { id: 1, sender: 'John', content: 'Hey, check out this new feature!' },
+                        { id: 2, sender: 'me', content: 'Looks good! Let\'s implement it.' }
+                    ],
+                    teamMembers: [
+                        { id: 1, name: 'John Doe', avatar: 'https://source.unsplash.com/100x100/?avatar,1', online: true },
+                        { id: 2, name: 'Jane Smith', avatar: 'https://source.unsplash.com/100x100/?avatar,2', online: false },
+                        { id: 3, name: 'Mike Johnson', avatar: 'https://source.unsplash.com/100x100/?avatar,3', online: true }
+                    ]
+                }
+            },
+            mounted() {
+                const darkMode = localStorage.getItem('darkMode')
+                if (darkMode === 'true') {
+                    this.toggleTheme()
+                }
+            },
+            methods: {
+                toggleTheme() {
+                    this.isDark = !this.isDark
+                    document.body.classList.toggle('dark-mode')
+                    localStorage.setItem('darkMode', this.isDark)
+                },
+                selectProject(project) {
+                    // Implement project selection logic
+                    console.log('Selected project:', project.name)
+                },
+                createProject() {
+                    if (this.newProjectName.trim()) {
+                        this.projects.push({
+                            id: this.projects.length + 1,
+                            name: this.newProjectName
+                        })
+                        this.newProjectName = ''
+                        this.showNewProjectModal = false
+                    }
+                },
+                saveCode() {
+                    // Implement save logic
+                    console.log('Saving code:', this.codeContent)
+                },
+                startVideoCall() {
+                    // Implement video call logic
+                    alert('Starting video call...')
+                },
+                sendMessage() {
+                    if (this.newMessage.trim()) {
+                        this.messages.push({
+                            id: this.messages.length + 1,
+                            sender: 'me',
+                            content: this.newMessage
+                        })
+                        this.newMessage = ''
+                    }
+                }
+            }
+        }).mount('#app')
+    </script>
+<script>document.body.addEventListener('wheel', e => { if (!e.ctrlKey) return; e.preventDefault(); return }, { passive: false })</script>
+	</body>
+</html>
